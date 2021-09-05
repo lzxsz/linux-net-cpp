@@ -59,7 +59,7 @@ int main(int argc, wchar_t* argv[])
 	DWORD Ret;
 
 	if ((Ret = WSAStartup(MAKEWORD(2, 2), &wsaData)) != 0) { /* Windows Sockets Asynchronous Startup */
-		printf("WSAStartup failed with error %d\n", Ret);
+		printf("WSAStartup failed with error %d\n", (int)Ret);
 		return -1;
 	}
 #else /* Linuix */
@@ -71,20 +71,27 @@ int main(int argc, wchar_t* argv[])
 	}
 #endif
 
-    event_init(); //Init libEvent
+    event_init(); /* Init libEvent */
 
     httpd = evhttp_start("0.0.0.0", 8080); /* Start HTTP server */
 
-    if(!httpd){
-	return 1;
+    /*
+     * Modified by ColaPI 2010-9-6
+     * Error: Resource leak: sock 
+     *
+     *  if(!httpd){   
+     *	   return 1;
+     *  }
+     */
+
+	 if (httpd){
+		evhttp_set_cb(httpd, "/", root_handler, NULL);  /* Set the response function of HTTP root request */
+		evhttp_set_gencb(httpd, generic_handler, NULL); /* Set the response function of HTTP generic request */
+		printf("httpd server start OK!\n");
+
+		event_dispatch(); /*  Event Loop. Wait! */
     }
 
-    evhttp_set_cb(httpd, "/", root_handler, NULL);  /* Set the response function of HTTP root request */
-    evhttp_set_gencb(httpd, generic_handler, NULL); /* Set the response function of HTTP generic request */
-
-	printf("httpd server start OK!\n");
-
-    event_dispatch(); /*  Event Loop. Wait! */
     evhttp_free(httpd); /* Free HTTP server */
 
 #ifdef _WIN32
